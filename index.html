@@ -1,0 +1,876 @@
+ 
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNA 구조 시뮬레이션</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Malgun Gothic', sans-serif;
+    background: linear-gradient(135deg, #0a0a2e 0%, #1a0a3e 50%, #0a1a2e 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #fff;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, #00d4ff, #a855f7, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 2px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #8899bb;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .btn-area {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: 11px 26px;
+    border: 2px solid transparent;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: rgba(255,255,255,0.07);
+    color: #aac4dd;
+    backdrop-filter: blur(6px);
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, #00d4ff33, #a855f733);
+    border-color: #00d4ff;
+    color: #00d4ff;
+    box-shadow: 0 0 18px #00d4ff44;
+  }
+  .tab-btn:hover:not(.active) {
+    background: rgba(255,255,255,0.13);
+    color: #fff;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* 카드 공통 */
+  .card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 26px;
+    max-width: 1020px;
+    margin: 0 auto;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  }
+  .card h2 {
+    text-align: center;
+    font-size: 20px;
+    margin-bottom: 18px;
+    color: #e0eeff;
+  }
+
+  /* ── 뉴클레오타이드 패널 ── */
+  .nucl-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 50px;
+    flex-wrap: wrap;
+  }
+  canvas.nucl-canvas {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.03);
+  }
+  .info-col { display: flex; flex-direction: column; gap: 14px; }
+  .legend-card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 16px 20px;
+  }
+  .legend-card h4 {
+    color: #00d4ff;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .leg-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: #ccd;
+    line-height: 1.5;
+  }
+  .leg-dot {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .leg-dot.circle { border-radius: 50%; }
+  .key-fact {
+    background: rgba(0,212,255,0.08);
+    border-left: 3px solid #00d4ff;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #b0d4ee;
+    line-height: 1.9;
+  }
+
+  /* ── DNA 패널 ── */
+  .dna-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .ctrl-label { font-size: 13px; color: #8899bb; min-width: 80px; text-align: right; }
+  input[type=range] {
+    width: 260px;
+    height: 6px;
+    accent-color: #00d4ff;
+    cursor: pointer;
+  }
+  .val-badge {
+    font-size: 13px;
+    font-weight: bold;
+    color: #00d4ff;
+    min-width: 36px;
+  }
+  #statusMsg {
+    font-size: 13px;
+    color: #a0c4dd;
+    text-align: center;
+    min-height: 20px;
+  }
+  #dnaCanvas {
+    display: block;
+    margin: 0 auto;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: radial-gradient(ellipse at center, #0d1b3e 0%, #050c1e 100%);
+  }
+  .base-legend {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .bl-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #aac;
+    font-weight: bold;
+  }
+  .bl-dot { width: 20px; height: 20px; border-radius: 4px; }
+  .pair-info {
+    text-align: center;
+    margin-top: 12px;
+    padding: 10px 20px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    font-size: 12px;
+    color: #889;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .pair-info strong { color: #00d4ff; }
+</style>
+</head>
+<body>
+
+<h1>🧬 DNA 구조 시뮬레이션</h1>
+<p class="subtitle">고등학교 1학년 생명과학 · DNA의 구조와 상보적 결합</p>
+
+<div class="btn-area">
+  <button class="tab-btn active" id="btn-nucl" onclick="showPanel('nucl')">🔬 뉴클레오타이드 구조</button>
+  <button class="tab-btn" id="btn-dna"  onclick="showPanel('dna')">🧬 DNA 이중나선 시뮬레이션</button>
+</div>
+
+<!-- ══════════ 뉴클레오타이드 패널 ══════════ -->
+<div id="nucl-panel" class="panel active">
+  <div class="card">
+    <h2>뉴클레오타이드의 구성 요소</h2>
+    <div class="nucl-wrap">
+      <canvas class="nucl-canvas" id="nuclCanvas" width="300" height="360"></canvas>
+      <div class="info-col">
+        <div class="legend-card">
+          <h4>🔵 구성 요소</h4>
+          <div class="leg-item">
+            <div class="leg-dot circle" style="background:#5DADE2;"></div>
+            <div><strong style="color:#5DADE2;">인산 (Phosphate)</strong><br>뉴클레오타이드를 연결하는 골격.<br>음전하를 띠어 DNA 전체를 음이온으로 만듦.</div>
+          </div>
+          <div class="leg-item">
+            <div class="leg-dot" style="background:#E8A0BF;"></div>
+            <div><strong style="color:#E8A0BF;">당 – 디옥시라이보스</strong><br>5탄당(탄소 5개). 2번 탄소에 –H<br>(RNA의 라이보스와 달리 산소 없음).</div>
+          </div>
+          <div class="leg-item">
+            <div class="leg-dot" style="background:#82E0AA; border-radius:6px;"></div>
+            <div><strong style="color:#82E0AA;">염기 (Base)</strong><br>A(아데닌), T(타이민), G(구아닌), C(사이토신)<br>4종류가 유전 정보를 암호화.</div>
+          </div>
+        </div>
+        <div class="key-fact">
+          💡 <strong style="color:#fff;">핵심 정리</strong><br>
+          • 뉴클레오타이드 = 인산 + 당 + 염기<br>
+          • 여러 뉴클레오타이드 → <strong style="color:#00d4ff;">폴리뉴클레오타이드</strong><br>
+          • DNA = 두 가닥의 폴리뉴클레오타이드<br>
+          • 인산·당 = 바깥 골격 / 염기 = 안쪽<br>
+          • A ↔ T, &nbsp;G ↔ C 상보 결합
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ DNA 이중나선 패널 ══════════ -->
+<div id="dna-panel" class="panel">
+  <div class="card">
+    <h2>DNA 이중나선 – 상보 결합 & 3D 나선 구조</h2>
+    <div class="dna-controls">
+      <div class="ctrl-row">
+        <span class="ctrl-label">결합 진행</span>
+        <input type="range" id="bindSlider" min="0" max="100" value="0" oninput="onSlider()">
+        <span class="val-badge" id="bindVal">0%</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">회전 속도</span>
+        <input type="range" id="speedSlider" min="0" max="100" value="30" oninput="onSpeed()">
+        <span class="val-badge" id="speedVal">30</span>
+        <button onclick="toggleAnim()" id="animBtn" style="
+          padding:6px 18px; border-radius:20px; border:1px solid #00d4ff;
+          background:rgba(0,212,255,0.15); color:#00d4ff; font-size:12px;
+          cursor:pointer; transition:all .2s;">⏸ 일시정지</button>
+      </div>
+      <div id="statusMsg">슬라이더를 오른쪽으로 움직여 상보 결합 과정을 확인하세요.</div>
+    </div>
+    <canvas id="dnaCanvas" width="860" height="560"></canvas>
+    <div class="base-legend">
+      <div class="bl-item"><div class="bl-dot" style="background:#E74C3C;"></div>A 아데닌</div>
+      <div class="bl-item"><div class="bl-dot" style="background:#F39C12;"></div>T 타이민</div>
+      <div class="bl-item"><div class="bl-dot" style="background:#27AE60;"></div>G 구아닌</div>
+      <div class="bl-item"><div class="bl-dot" style="background:#8E44AD;"></div>C 사이토신</div>
+      <div class="bl-item"><div class="bl-dot" style="background:#5DADE2; border-radius:50%;"></div>인산</div>
+      <div class="bl-item"><div class="bl-dot" style="background:#E8A0BF;"></div>당(디옥시라이보스)</div>
+    </div>
+    <div class="pair-info">
+      <strong>A ↔ T</strong> (수소결합 2개) &nbsp;|&nbsp; <strong>G ↔ C</strong> (수소결합 3개) &nbsp;·&nbsp;
+      점선(- - -)은 수소결합을 나타냅니다.
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  공통 유틸
+// ═══════════════════════════════════════════════
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name + '-panel').classList.add('active');
+  document.getElementById('btn-' + name).classList.add('active');
+  if (name === 'nucl') drawNucleotide();
+}
+
+function roundRect(ctx, x, y, w, h, r, fill, stroke, sw) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+  ctx.fillStyle = fill; ctx.fill();
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = sw||2; ctx.stroke(); }
+}
+function pentagon(ctx, cx, cy, r, fill, stroke, sw) {
+  ctx.beginPath();
+  for (let i=0;i<5;i++){
+    const a=(Math.PI*2*i/5)-Math.PI/2;
+    const x=cx+r*Math.cos(a), y=cy+r*Math.sin(a);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.fillStyle=fill; ctx.fill();
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=sw||2;ctx.stroke();}
+}
+function darken(hex,f=0.65){
+  const r=parseInt(hex.slice(1,3),16);
+  const g=parseInt(hex.slice(3,5),16);
+  const b=parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.floor(r*f)},${Math.floor(g*f)},${Math.floor(b*f)})`;
+}
+function lighten(hex,f=1.4){
+  const r=Math.min(255,parseInt(hex.slice(1,3),16)*f);
+  const g=Math.min(255,parseInt(hex.slice(3,5),16)*f);
+  const b=Math.min(255,parseInt(hex.slice(5,7),16)*f);
+  return `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+}
+
+// ═══════════════════════════════════════════════
+//  뉴클레오타이드 그리기
+// ═══════════════════════════════════════════════
+function drawNucleotide() {
+  const cv = document.getElementById('nuclCanvas');
+  const ctx = cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  const cx = W/2;
+
+  // 인산
+  const pY=62;
+  ctx.beginPath();
+  ctx.arc(cx,pY,32,0,Math.PI*2);
+  const pg=ctx.createRadialGradient(cx-8,pY-8,4,cx,pY,32);
+  pg.addColorStop(0,'#85d4f7'); pg.addColorStop(1,'#2980b9');
+  ctx.fillStyle=pg; ctx.fill();
+  ctx.strokeStyle='#1a5f8c'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font='bold 14px Malgun Gothic';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('인산',cx,pY);
+
+  // 인산→당 연결
+  ctx.beginPath(); ctx.moveTo(cx,pY+32); ctx.lineTo(cx,pY+62);
+  ctx.strokeStyle='#4a7a9b'; ctx.lineWidth=4; ctx.stroke();
+
+  // 당
+  const dY=pY+96;
+  const dg=ctx.createRadialGradient(cx-10,dY-10,4,cx,dY,48);
+  dg.addColorStop(0,'#f5c6dc'); dg.addColorStop(1,'#d17aaa');
+  pentagon(ctx,cx,dY,46,null,null);
+  // 그라디언트 채우기
+  ctx.beginPath();
+  for(let i=0;i<5;i++){const a=(Math.PI*2*i/5)-Math.PI/2;const x=cx+46*Math.cos(a),y=dY+46*Math.sin(a);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.closePath(); ctx.fillStyle=dg; ctx.fill();
+  ctx.strokeStyle='#a0527a'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.fillStyle='#5c1a3a'; ctx.font='bold 11px Malgun Gothic';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('디옥시',cx,dY-7);
+  ctx.fillText('라이보스',cx,dY+9);
+
+  // 당 라벨
+  ctx.fillStyle='#E8A0BF'; ctx.font='bold 12px Malgun Gothic';
+  ctx.textAlign='left';
+  ctx.fillText('당',22,dY+2);
+
+  // 당→염기 연결
+  ctx.beginPath(); ctx.moveTo(cx+44,dY); ctx.lineTo(cx+70,dY);
+  ctx.strokeStyle='#4a7a9b'; ctx.lineWidth=4; ctx.stroke();
+
+  // 염기
+  const bX=cx+114, bY=dY;
+  const bg2=ctx.createLinearGradient(bX-44,bY-24,bX+44,bY+24);
+  bg2.addColorStop(0,'#a8e6b8'); bg2.addColorStop(1,'#27ae60');
+  roundRect(ctx,bX-44,bY-26,88,52,10,bg2,'#1a7a40',2.5);
+  ctx.fillStyle='#0d3d1f'; ctx.font='bold 15px Malgun Gothic';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('염기',bX,bY-6);
+  ctx.font='11px Malgun Gothic'; ctx.fillStyle='#1a5c2a';
+  ctx.fillText('A / T / G / C',bX,bY+12);
+
+  // 인산 라벨
+  ctx.fillStyle='#5DADE2'; ctx.font='bold 12px Malgun Gothic';
+  ctx.textAlign='right';
+  ctx.fillText('인산',cx-38,pY+2);
+
+  // 염기 라벨
+  ctx.fillStyle='#82E0AA'; ctx.font='bold 12px Malgun Gothic';
+  ctx.textAlign='center';
+  ctx.fillText('염기',bX,bY+38);
+
+  // 전체 테두리
+  ctx.strokeStyle='rgba(0,212,255,0.3)'; ctx.lineWidth=1.5;
+  ctx.setLineDash([6,4]);
+  ctx.strokeRect(12,12,W-24,H-24);
+  ctx.setLineDash([]);
+
+  ctx.fillStyle='rgba(0,212,255,0.7)'; ctx.font='bold 13px Malgun Gothic';
+  ctx.textAlign='center';
+  ctx.fillText('[ 뉴클레오타이드 ]',cx,H-22);
+}
+
+// ═══════════════════════════════════════════════
+//  DNA 이중나선 시뮬레이션
+// ═══════════════════════════════════════════════
+const BASE_COLORS = {A:'#E74C3C',T:'#F39C12',G:'#27AE60',C:'#8E44AD'};
+const COMP = {A:'T',T:'A',G:'C',C:'G'};
+const SEQ  = ['A','T','G','C','A','G','T','C','A','T'];
+const SEQ2 = SEQ.map(b=>COMP[b]);
+
+let bindT = 0;      // 0~1 결합 진행도
+let rotAngle = 0;   // 현재 회전 각도
+let rotSpeed = 0.012;
+let animRunning = true;
+let rafId = null;
+
+function onSlider() {
+  bindT = parseInt(document.getElementById('bindSlider').value)/100;
+  document.getElementById('bindVal').textContent = Math.round(bindT*100)+'%';
+  updateStatusMsg();
+}
+function onSpeed() {
+  const v = parseInt(document.getElementById('speedSlider').value);
+  document.getElementById('speedVal').textContent = v;
+  rotSpeed = v * 0.0004;
+}
+function toggleAnim() {
+  animRunning = !animRunning;
+  document.getElementById('animBtn').textContent = animRunning ? '⏸ 일시정지' : '▶ 재생';
+  if (animRunning) loop();
+}
+function updateStatusMsg() {
+  const t = bindT;
+  const el = document.getElementById('statusMsg');
+  if (t<0.01) el.textContent='두 가닥이 완전히 분리된 상태입니다.';
+  else if (t<0.35) el.textContent='두 가닥이 서서히 가까워지고 있습니다…';
+  else if (t<0.7) el.textContent='상보적 염기끼리 수소결합이 형성되고 있습니다! (A-T, G-C)';
+  else if (t<0.99) el.textContent='이중나선 구조가 완성되어 가고 있습니다!';
+  else el.textContent='✅ DNA 이중나선 완성! A-T, G-C 상보결합으로 두 가닥이 연결되었습니다.';
+}
+
+// ─── 메인 드로우 ───
+function drawDNA() {
+  const cv = document.getElementById('dnaCanvas');
+  const ctx = cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  // 배경 그라디언트
+  const bg=ctx.createRadialGradient(W/2,H/2,40,W/2,H/2,500);
+  bg.addColorStop(0,'#0d1b3e'); bg.addColorStop(1,'#050c1e');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  const n = SEQ.length;
+  const cx = W/2;
+
+  // ── 두 가닥 분리 모드 (bindT < 1) ──
+  // 분리 상태: 좌우로 분리된 두 사슬 + 나선
+  // t=0 → 완전 분리, t=1 → 완전 결합(이중나선)
+
+  if (bindT < 0.98) {
+    drawSeparatedStrands(ctx, W, H, n, bindT);
+  } else {
+    drawDoubleHelix(ctx, W, H, n, rotAngle, 1.0);
+  }
+
+  // 결합 완성 오버레이
+  if (bindT >= 0.98) {
+    ctx.save();
+    const alpha = (bindT - 0.98)/0.02;
+    ctx.globalAlpha = alpha * 0.85;
+    // 상단 완성 뱃지
+    const grd=ctx.createLinearGradient(cx-200,18,cx+200,18);
+    grd.addColorStop(0,'#00d4ff'); grd.addColorStop(1,'#a855f7');
+    roundRect(ctx,cx-200,10,400,36,12,grd,null);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle='#fff'; ctx.font='bold 16px Malgun Gothic';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🎉 DNA 이중나선 완성! — 상보 결합으로 연결됨',cx,28);
+    ctx.restore();
+  }
+}
+
+// ═══ 분리 상태: 두 사슬을 양쪽에 그리고 점차 접근 ═══
+function drawSeparatedStrands(ctx, W, H, n, t) {
+  const cx = W/2;
+  // 가닥1: 왼쪽, 가닥2: 오른쪽
+  // t=0 → sep 크게, t=1 → sep 작게(이중나선 폭)
+  const maxSep = 300;
+  const minSep = 140;
+  const sep = maxSep - (maxSep - minSep) * t;
+
+  const s1X = cx - sep;
+  const s2X = cx + sep;
+
+  const rowH = (H - 80) / n;
+
+  // 각 가닥에 나선 효과: 좌측 가닥은 약간의 sine 곡선 추가
+  const helixAmp = 18 * t; // 결합될수록 나선 효과 증가
+
+  // 배경 발광 (가닥 위치)
+  for (let side = 0; side < 2; side++) {
+    const sx = side === 0 ? s1X : s2X;
+    const grd = ctx.createLinearGradient(sx-10,40,sx-10,H-40);
+    grd.addColorStop(0, side===0?'rgba(0,180,255,0.08)':'rgba(168,85,247,0.08)');
+    grd.addColorStop(1,'transparent');
+    ctx.fillStyle=grd;
+    ctx.fillRect(sx-60, 40, 120, H-80);
+  }
+
+  // 수소결합 점선 (t > 0.1)
+  if (t > 0.05) {
+    for (let i=0; i<n; i++) {
+      const y = 50 + i*rowH + rowH/2;
+      const b1 = SEQ[i], b2 = SEQ2[i];
+      const bonds = (b1==='A'||b1==='T') ? 2 : 3;
+      const alpha = Math.min(1, (t-0.05)*1.3);
+
+      // 염기 끝 위치 (염기 너비 44)
+      const b1end = s1X + 18 + 6 + 44;
+      const b2start = s2X - 18 - 6 - 44;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.setLineDash([5,4]);
+      ctx.lineWidth = 1.8;
+      const hgrd = ctx.createLinearGradient(b1end, y, b2start, y);
+      hgrd.addColorStop(0,'#00d4ff'); hgrd.addColorStop(1,'#a855f7');
+      ctx.strokeStyle = hgrd;
+      for (let b=0; b<bonds; b++) {
+        const off = (b - (bonds-1)/2)*7;
+        ctx.beginPath(); ctx.moveTo(b1end,y+off); ctx.lineTo(b2start,y+off); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // 결합 수 표시
+      if (t > 0.45) {
+        ctx.globalAlpha = (t-0.45)*1.8;
+        const midX=(b1end+b2start)/2;
+        ctx.fillStyle='#00d4ff'; ctx.font='bold 10px Malgun Gothic';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(bonds+'H', midX, y-10);
+      }
+      ctx.restore();
+    }
+  }
+
+  // 각 가닥 그리기
+  drawStrand(ctx, s1X, n, SEQ,  rowH, 'left',  t, helixAmp, false);
+  drawStrand(ctx, s2X, n, SEQ2, rowH, 'right', t, helixAmp, true);
+
+  // 가닥 제목
+  labelText(ctx, s1X, 22, '← 가닥 1 (주형 가닥)', '#00d4ff');
+  labelText(ctx, s2X, 22, '가닥 2 (상보 가닥) →', '#a855f7');
+  if (t > 0.1) {
+    labelText(ctx, W/2, 22, '— 수소결합 —', '#7ecfff');
+  }
+}
+
+function drawStrand(ctx, sx, n, bases, rowH, side, t, helixAmp, flip) {
+  const pR = 13, sR = 17;
+  const bW = 44, bH = 28;
+
+  // 골격 연결선 먼저
+  for (let i=0; i<n-1; i++) {
+    const y1 = 50 + i*rowH + rowH/2;
+    const y2 = 50 + (i+1)*rowH + rowH/2;
+    const wave1 = Math.sin((i/n)*Math.PI*2 + rotAngle*2)*helixAmp;
+    const wave2 = Math.sin(((i+1)/n)*Math.PI*2 + rotAngle*2)*helixAmp;
+    ctx.beginPath();
+    ctx.moveTo(sx + wave1, y1 + sR);
+    ctx.lineTo(sx + wave2, y2 - pR - 4);
+    const lg = ctx.createLinearGradient(sx,y1,sx,y2);
+    lg.addColorStop(0, side==='left'?'#2E86C1':'#7d3c98');
+    lg.addColorStop(1, side==='left'?'#7ecfff':'#d7bde2');
+    ctx.strokeStyle = lg;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+
+  for (let i=0; i<n; i++) {
+    const y = 50 + i*rowH + rowH/2;
+    const wave = Math.sin((i/n)*Math.PI*2 + rotAngle*2)*helixAmp;
+    const nx = sx + wave;
+
+    // 인산
+    const ph_y = y - sR - 5;
+    const pg = ctx.createRadialGradient(nx-4, ph_y-4, 2, nx, ph_y, pR);
+    pg.addColorStop(0,'#85d4f7'); pg.addColorStop(1,'#2E86C1');
+    ctx.beginPath(); ctx.arc(nx, ph_y, pR, 0, Math.PI*2);
+    ctx.fillStyle=pg; ctx.fill();
+    ctx.strokeStyle='#1a5f8c'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='bold 8px Malgun Gothic';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('P', nx, ph_y);
+
+    // 인산→당 연결
+    ctx.beginPath(); ctx.moveTo(nx, ph_y+pR); ctx.lineTo(nx, y-sR);
+    ctx.strokeStyle='#4a7a9b'; ctx.lineWidth=3; ctx.stroke();
+
+    // 당 (오각형 3D)
+    const dg = ctx.createRadialGradient(nx-6,y-6,3,nx,y,sR);
+    dg.addColorStop(0,'#f5c6dc'); dg.addColorStop(1,'#c0728a');
+    ctx.beginPath();
+    for(let k=0;k<5;k++){
+      const a=(Math.PI*2*k/5)-Math.PI/2;
+      const px2=nx+sR*Math.cos(a), py2=y+sR*Math.sin(a);
+      k===0?ctx.moveTo(px2,py2):ctx.lineTo(px2,py2);
+    }
+    ctx.closePath(); ctx.fillStyle=dg; ctx.fill();
+    ctx.strokeStyle='#8B3A6A'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle='#4a0a2a'; ctx.font='bold 7px Malgun Gothic';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('당', nx, y);
+
+    // 당→염기 연결
+    const dir = side==='left' ? 1 : -1;
+    const bCX = nx + dir*(sR+6+bW/2);
+    ctx.beginPath();
+    ctx.moveTo(nx+dir*sR, y);
+    ctx.lineTo(nx+dir*(sR+6), y);
+    ctx.strokeStyle='#4a7a9b'; ctx.lineWidth=3; ctx.stroke();
+
+    // 염기 (3D 느낌)
+    const base = bases[i];
+    const bc = BASE_COLORS[base];
+    const bLight = lighten(bc, 1.5);
+    const bDark  = darken(bc, 0.6);
+    const bgrd = ctx.createLinearGradient(bCX-bW/2, y-bH/2, bCX+bW/2, y+bH/2);
+    bgrd.addColorStop(0, bLight);
+    bgrd.addColorStop(1, bc);
+
+    // 3D 효과: 아래쪽 그림자
+    roundRect(ctx, bCX-bW/2+2, y-bH/2+4, bW, bH, 7, 'rgba(0,0,0,0.3)', null);
+    roundRect(ctx, bCX-bW/2, y-bH/2, bW, bH, 7, bgrd, bDark, 2);
+
+    // 반사광
+    ctx.save();
+    ctx.globalAlpha=0.35;
+    roundRect(ctx, bCX-bW/2+4, y-bH/2+3, bW-8, bH/2-4, 4, 'rgba(255,255,255,0.6)', null);
+    ctx.restore();
+
+    ctx.fillStyle='#fff'; ctx.font='bold 13px Malgun Gothic';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(base, bCX, y);
+  }
+}
+
+function labelText(ctx, x, y, text, color) {
+  ctx.fillStyle=color; ctx.font='bold 12px Malgun Gothic';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text, x, y);
+}
+
+// ═══ 이중나선 (결합 완성 후 t≈1) ═══
+function drawDoubleHelix(ctx, W, H, n, angle, t) {
+  const cx = W/2;
+  const helixW = 130;   // 나선 너비 (반폭)
+  const topY   = 40;
+  const botY   = H - 30;
+  const totalH = botY - topY;
+  const period = Math.PI * 2; // 한 바퀴
+  const turns  = 2.5;         // 총 회전 수
+  const rowH   = totalH / n;
+
+  // ── 나선 골격(리본) 그리기 ──
+  // 가닥1: 파랑, 가닥2: 보라
+  const strandColors = [
+    { main:'#00aaff', dark:'#005599', light:'#88ddff' },
+    { main:'#aa55ff', dark:'#550099', light:'#dd99ff' }
+  ];
+
+  // 백본 곡선 포인트 계산
+  function helixX(i, strand, totalPts) {
+    const frac = i / (totalPts-1);
+    const theta = frac * period * turns + angle + (strand===1 ? Math.PI : 0);
+    return cx + Math.cos(theta) * helixW;
+  }
+  function helixY(i, totalPts) {
+    return topY + (i/(totalPts-1)) * totalH;
+  }
+  function helixZ(i, strand, totalPts) {
+    const frac = i / (totalPts-1);
+    const theta = frac * period * turns + angle + (strand===1 ? Math.PI : 0);
+    return Math.sin(theta); // -1 ~ 1 (앞=+1, 뒤=-1)
+  }
+
+  const PTS = 200;
+
+  // 앞/뒤 구분하여 나선 파이프 그리기
+  // 먼저 뒤(z<0)를 그린 후 앞(z>0) 그리기
+  for (let pass = 0; pass < 2; pass++) { // pass0=뒤, pass1=앞
+    for (let si = 0; si < 2; si++) {
+      const col = strandColors[si];
+      for (let i = 0; i < PTS-1; i++) {
+        const z = helixZ(i, si, PTS);
+        const isFront = z >= 0;
+        if (pass===0 && isFront) continue;
+        if (pass===1 && !isFront) continue;
+
+        const x1 = helixX(i, si, PTS),   y1 = helixY(i, PTS);
+        const x2 = helixX(i+1, si, PTS), y2 = helixY(i+1, PTS);
+        const depth = (z+1)/2; // 0(뒤)~1(앞)
+        const lineW = 6 + depth*6;
+        const alpha = pass===0 ? 0.45 : 1.0;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+        ctx.strokeStyle = pass===0 ? col.dark : col.main;
+        ctx.lineWidth = lineW;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // 반사광
+        if (pass===1) {
+          ctx.beginPath();
+          ctx.moveTo(x1-1.5,y1+1); ctx.lineTo(x2-1.5,y2+1);
+          ctx.strokeStyle = col.light;
+          ctx.lineWidth = lineW*0.3;
+          ctx.globalAlpha = depth*0.5;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  // ── 염기쌍 + 인산·당 그리기 ──
+  // 각 뉴클레오타이드 행마다
+  for (let i=0; i<n; i++) {
+    const frac = i/(n-1);
+    const theta = frac * period * turns + angle;
+    const zVal = Math.sin(theta);  // 가닥1의 z값
+
+    const x1 = cx + Math.cos(theta) * helixW;
+    const x2 = cx + Math.cos(theta+Math.PI) * helixW;
+    const y  = topY + frac * totalH;
+
+    const depth1 = (Math.sin(theta)+1)/2;
+    const depth2 = (Math.sin(theta+Math.PI)+1)/2;
+
+    const base1 = SEQ[i],  base2 = SEQ2[i];
+    const bonds = (base1==='A'||base1==='T') ? 2 : 3;
+
+    // ─ 수소결합 점선 (뒤에서 먼저) ─
+    const midX = (x1+x2)/2;
+    const bW=32, bH=22;
+    // 염기 끝 위치
+    const b1end = x1 < x2 ? x1+bW/2 : x1-bW/2;
+    const b2end = x1 < x2 ? x2-bW/2 : x2+bW/2;
+
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    ctx.setLineDash([4,3]);
+    ctx.lineWidth = 1.5;
+    const hg = ctx.createLinearGradient(b1end,y,b2end,y);
+    hg.addColorStop(0,'#00d4ff'); hg.addColorStop(1,'#a855f7');
+    ctx.strokeStyle=hg;
+    for(let b=0;b<bonds;b++){
+      const off=(b-(bonds-1)/2)*5;
+      ctx.beginPath(); ctx.moveTo(b1end,y+off); ctx.lineTo(b2end,y+off); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // ─ 염기 (z 순서로 뒤→앞) ─
+    const items = [
+      {x:x1, base:base1, depth:depth1},
+      {x:x2, base:base2, depth:depth2}
+    ].sort((a,b)=>a.depth-b.depth); // 뒤 먼저
+
+    for (const {x, base, depth} of items) {
+      const bc = BASE_COLORS[base];
+      const sz = 0.6 + depth*0.6;
+      const rw = bW*sz, rh = bH*sz;
+      const alpha2 = 0.4 + depth*0.6;
+
+      ctx.save();
+      ctx.globalAlpha = alpha2;
+      // 그림자
+      roundRect(ctx, x-rw/2+2, y-rh/2+3, rw, rh, 5, 'rgba(0,0,0,0.3)', null);
+      // 본체
+      const bg2=ctx.createLinearGradient(x-rw/2,y-rh/2,x+rw/2,y+rh/2);
+      bg2.addColorStop(0,lighten(bc,1.4)); bg2.addColorStop(1,bc);
+      roundRect(ctx, x-rw/2, y-rh/2, rw, rh, 5, bg2, darken(bc,0.6), 1.5);
+      // 반사
+      ctx.globalAlpha = alpha2*0.3;
+      roundRect(ctx, x-rw/2+3, y-rh/2+2, rw-6, rh/2-2, 3, 'rgba(255,255,255,0.8)', null);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = alpha2;
+      ctx.fillStyle='#fff'; ctx.font=`bold ${Math.round(11*sz)}px Malgun Gothic`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(base, x, y);
+      ctx.restore();
+    }
+
+    // ─ 인산·당 (가닥1) ─
+    drawHelixNucl(ctx, x1, y, depth1, strandColors[0]);
+    drawHelixNucl(ctx, x2, y, depth2, strandColors[1]);
+  }
+}
+
+function drawHelixNucl(ctx, x, y, depth, col) {
+  const pR = 9 + depth*5;
+  const sR = 11 + depth*5;
+  const alpha = 0.4 + depth*0.6;
+
+  // 당 (오각형)
+  const sz = 0.5 + depth*0.5;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const pg2=ctx.createRadialGradient(x-3,y-3,2,x,y,sR*sz);
+  pg2.addColorStop(0,'#f5c6dc'); pg2.addColorStop(1,'#c0728a');
+  ctx.beginPath();
+  for(let k=0;k<5;k++){
+    const a=(Math.PI*2*k/5)-Math.PI/2;
+    ctx.lineTo(x+sR*sz*Math.cos(a), y+sR*sz*Math.sin(a));
+  }
+  ctx.closePath();
+  ctx.fillStyle=pg2; ctx.fill();
+  ctx.strokeStyle='#8B3A6A'; ctx.lineWidth=1; ctx.stroke();
+  ctx.restore();
+
+  // 인산 (원)
+  const phY = y - sR*sz - pR*sz - 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const ppg=ctx.createRadialGradient(x-3,phY-3,1,x,phY,pR*sz);
+  ppg.addColorStop(0,'#85d4f7'); ppg.addColorStop(1,'#2E86C1');
+  ctx.beginPath(); ctx.arc(x, phY, pR*sz, 0, Math.PI*2);
+  ctx.fillStyle=ppg; ctx.fill();
+  ctx.strokeStyle='#1a5f8c'; ctx.lineWidth=1; ctx.stroke();
+  // P 라벨
+  if(depth>0.4){
+    ctx.fillStyle='#fff';
+    ctx.font=`bold ${Math.round(7+depth*3)}px Malgun Gothic`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('P', x, phY);
+  }
+  ctx.restore();
+}
+
+// ── 애니메이션 루프 ──
+function loop() {
+  if (!animRunning) return;
+  rotAngle += rotSpeed;
+  drawDNA();
+  rafId = requestAnimationFrame(loop);
+}
+
+// ── 초기화 ──
+drawNucleotide();
+updateStatusMsg();
+loop();
+</script>
+</body>
+</html>
